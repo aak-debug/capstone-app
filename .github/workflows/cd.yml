@@ -99,48 +99,51 @@ jobs:
           fi
           echo "Dev OK"
 
-  deploy-staging:
-    name: "Deploy to staging"
-    needs: deploy-dev
-    runs-on: [self-hosted, linux, staging]
-    environment: staging
-    steps:
-      - name: "Debug: show inputs"
-        run: |
-          echo "DEBUG: needs.build-and-push.outputs.image_tag='${{ needs.build-and-push.outputs.image_tag }}'"
+deploy-staging:
+  name: "Deploy to staging"
+  needs: deploy-dev
+  runs-on: [self-hosted, linux, staging]
+  environment: staging
+  steps:
+    - name: "Debug: show inputs"
+      run: |
+        echo "DEBUG: needs.build-and-push.outputs.image_tag='${{ needs.build-and-push.outputs.image_tag }}'"
 
-      - name: "Deploy to staging"
-        run: |
-          IMAGE_NAME="${{ env.IMAGE_NAME }}"
-          IMG_TAG="${{ needs.build-and-push.outputs.image_tag }}"
-          echo "DEBUG: IMAGE_NAME='$IMAGE_NAME'"
-          echo "DEBUG: IMG_TAG='$IMG_TAG'"
+    - name: "Deploy to staging"
+      run: |
+        IMAGE_NAME="${{ env.IMAGE_NAME }}"
+        IMG_TAG="${{ needs.build-and-push.outputs.image_tag }}"
 
-          if [ -z "$IMG_TAG" ]; then
-            echo "ERROR: image tag is empty. Aborting staging deploy."
-            exit 1
-          fi
+        # fallback to github.sha if the output was empty
+        if [ -z "$IMG_TAG" ]; then
+          echo "WARNING: image_tag empty — falling back to github.sha"
+          IMG_TAG="sha-${{ github.sha }}"
+        fi
 
-          IMAGE="${IMAGE_NAME}:${IMG_TAG}"
-          echo "DEBUG: FULL IMAGE='$IMAGE'"
+        echo "DEBUG: IMAGE_NAME='$IMAGE_NAME'"
+        echo "DEBUG: IMG_TAG='$IMG_TAG'"
 
-          docker pull "$IMAGE"
-          docker stop capstone-app-stg || true
-          docker rm capstone-app-stg || true
-          docker run -d --name capstone-app-stg -p 8081:80 -e "APP_VERSION=${IMG_TAG}" "$IMAGE"
+        IMAGE="${IMAGE_NAME}:${IMG_TAG}"
+        echo "DEBUG: FULL IMAGE='$IMAGE'"
 
-      - name: "Wait for container to start"
-        run: sleep 5
+        # pull and run
+        docker pull "$IMAGE"
+        docker stop capstone-app-stg || true
+        docker rm capstone-app-stg || true
+        docker run -d --name capstone-app-stg -p 8081:80 -e "APP_VERSION=${IMG_TAG}" "$IMAGE"
 
-      - name: "Staging healthcheck"
-        run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/health || echo "000")
-          if [ "$STATUS" -ne 200 ]; then
-            echo "Staging health failed: $STATUS"
-            docker logs capstone-app-stg --tail 200 || true
-            exit 1
-          fi
-          echo "Staging OK"
+    - name: "Wait for container to start"
+      run: sleep 5
+
+    - name: "Staging healthcheck"
+      run: |
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/health || echo "000")
+        if [ "$STATUS" -ne 200 ]; then
+          echo "Staging health failed: $STATUS"
+          docker logs capstone-app-stg --tail 200 || true
+          exit 1
+        fi
+        echo "Staging OK"
 
   deploy-prod:
     name: "Deploy to production"

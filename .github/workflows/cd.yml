@@ -160,23 +160,23 @@ jobs:
       - name: "Deploy to production"
         run: |
           IMAGE_NAME="${{ env.IMAGE_NAME }}"
-           IMG_TAG="${{ needs.build-and-push.outputs.image_tag }}"
+          IMG_TAG="${{ needs.build-and-push.outputs.image_tag }}"
 
-            if [ -z "$IMG_TAG" ]; then
-            echo "WARNING: image_tag empty — falling back to github.sha for production (temporary)."
-            IMG_TAG="sha-${{ github.sha }}"
-            fi
+          if [ -z "$IMG_TAG" ]; then
+          echo "WARNING: image_tag empty — falling back to github.sha for production (temporary)."
+          IMG_TAG="sha-${{ github.sha }}"
+          fi
 
-            echo "DEBUG: IMAGE_NAME='$IMAGE_NAME'"
-            echo "DEBUG: IMG_TAG='$IMG_TAG'"
+          echo "DEBUG: IMAGE_NAME='$IMAGE_NAME'"
+          echo "DEBUG: IMG_TAG='$IMG_TAG'"
 
-            IMAGE="${IMAGE_NAME}:${IMG_TAG}"
-            echo "DEBUG: FULL IMAGE='$IMAGE'"
+          IMAGE="${IMAGE_NAME}:${IMG_TAG}"
+          echo "DEBUG: FULL IMAGE='$IMAGE'"
 
-            docker pull "$IMAGE"
-            docker stop capstone-app-prod || true
-            docker rm capstone-app-prod || true
-            docker run -d --name capstone-app-prod -p 80:80 -e "APP_VERSION=${IMG_TAG}" "$IMAGE"
+          docker pull "$IMAGE"
+          docker stop capstone-app-prod || true
+          docker rm capstone-app-prod || true
+          docker run -d --name capstone-app-prod -p 80:80 -e "APP_VERSION=${IMG_TAG}" "$IMAGE"
 
 
       - name: "Wait for container to start"

@@ -1,4 +1,3 @@
-cat > .github/workflows/cd.yml <<'YML'
 name: CD - Build, Push and Deploy
 
 on:
